@@ -1,0 +1,7 @@
+{
+  "name": "orbench-ptc-runtime",
+  "private": true,
+  "dependencies": {
+    "quickjs-emscripten": "0.32.0"
+  }
+}

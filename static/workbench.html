@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#141719">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LLM4OR 医疗平台</title>
+<link rel="icon" type="image/svg+xml" href="/static/house-mark.svg">
+<link rel="stylesheet" href="/static/style.css?v=house-mark-10">
+</head>
+<body>
+<header class="top">
+  <span class="brand">
+    <img class="mark" src="/static/house-mark.svg" width="28" height="28" alt="">
+    <span class="brand-text">
+      <strong>LLM4OR</strong>
+      <span class="sub">医疗运筹平台</span>
+    </span>
+  </span>
+  <span class="meta" id="health" role="status">正在检查求解器</span>
+</header>
+
+<main class="layout">
+  <section class="panel">
+    <h1>可运行的问题类型</h1>
+    <div class="scenes" id="scenes"></div>
+    <a class="catalog-link" id="catalog-open" href="#candidate-scenes" aria-controls="candidate-scenes">浏览医疗运筹问题目录</a>
+    <p class="hint" id="scene-hint" hidden></p>
+
+    <div id="scene-form" hidden>
+    <h2 id="scene-title">新建任务</h2>
+    <form id="task-form">
+      <label class="field">实例
+        <select id="instance"></select>
+      </label>
+      <p class="hint" id="instance-hint"></p>
+      <div class="row">
+        <label class="field">时间预算（秒）
+          <input id="seconds" type="number" value="30" min="5" max="300" step="5">
+        </label>
+        <label class="field">随机种子
+          <input id="seed" type="number" value="7" min="0" max="2147483647">
+        </label>
+      </div>
+      <label class="check">
+        <input id="build-pipeline" type="checkbox" checked>
+        <span>生成模型和求解代码</span>
+      </label>
+      <p class="mode-label">PTC / Code Mode</p>
+      <div class="model-row" id="model-row">
+        <div class="seg" id="model-seg" role="group" aria-label="模型"></div>
+        <label class="field effort">推理强度
+          <select id="effort"></select>
+        </label>
+      </div>
+      <p class="decision-scope">模型决策：选择 ALNS 算子、破坏比例与接受策略。</p>
+      <button type="submit" id="run-btn">生成实验决策</button>
+    </form>
+    </div>
+
+    <p class="hint" id="form-hint" role="status"></p>
+    <section class="solver-roles" aria-labelledby="solver-title">
+      <h2 id="solver-title">求解器</h2>
+      <dl id="solver-roles"><dt>主求解</dt><dd>ALNS</dd></dl>
+    </section>
+  </section>
+
+  <section class="panel detail" id="detail">
+    <a class="back-link" id="back-to-tasks" href="/" hidden>返回任务列表</a>
+    <div class="summary" id="summary" hidden></div>
+    <section class="proposal" id="proposal" aria-labelledby="proposal-title" hidden>
+      <header class="proposal-head"><h2 id="proposal-title">实验决策</h2><span class="tag" id="proposal-origin"></span></header>
+      <p id="proposal-state" role="status"></p>
+      <p id="proposal-reason" class="llm-output"></p>
+      <dl id="proposal-values"></dl>
+      <pre id="proposal-json"></pre>
+      <button type="button" id="start-solver" hidden>启动求解</button>
+      <p class="hint error" id="start-error" role="alert"></p>
+    </section>
+    <section id="model-usage" aria-labelledby="usage-title" hidden>
+      <header class="usage-head"><h2 id="usage-title">模型用量</h2><span id="usage-scope"></span></header>
+      <div id="usage-body" aria-live="polite"></div>
+    </section>
+
+    <div class="view-tabs" role="tablist" hidden>
+      <button type="button" class="view-tab on" data-view="chat">对话</button>
+      <button type="button" class="view-tab" data-view="trace">轨迹</button>
+      <button type="button" class="view-tab" data-view="ptc">PTC</button>
+      <button type="button" class="view-tab" data-view="code">代码与产物</button>
+      <button type="button" class="view-tab" data-view="build">建模</button>
+      <button type="button" class="view-tab" data-view="model">模型</button>
+    </div>
+
+    <div id="view-chat">
+      <div class="hero" id="hero">
+        <details class="recent history">
+          <summary>最近任务 <span class="count" id="task-count"></span></summary>
+          <ul id="task-list" class="tasks"></ul>
+        </details>
+        <section id="candidate-scenes" class="panel detail" aria-labelledby="candidate-title" hidden>
+          <button type="button" id="catalog-back" class="link back-link">返回工作台</button>
+          <h2 id="candidate-title" tabindex="-1">医疗运筹问题目录</h2>
+          <label class="field type-filter">问题类型<select id="problem-type"><option value="">全部类型</option></select></label>
+          <table class="candidate-table">
+            <thead><tr><th scope="col">医疗应用 / 数据集</th><th scope="col">数据内容</th><th scope="col">决策与实验条件</th><th scope="col">状态</th></tr></thead>
+            <tbody>
+              <tr class="problem-group"><th scope="rowgroup" colspan="4"><b>排程与排班</b><span>决定服务时间、资源占用和人员班次</span></th></tr>
+              <tr data-run="surgical"><th scope="row">手术排程<a href="/?scenario=surgical#scene-form">FrontierOR / IHTC2024 简化实例</a></th>
+                <td>患者、医生、手术室、规划期及手术时长。</td><td>安排手术日期和手术室，满足容量、医生可用性与截止日约束。</td><td class="ok">可运行</td></tr>
+              <tr><th scope="row">护士滚动排班<a href="https://mobiz.vives.be/inrc2/?page_id=20">INRC-II · 竞赛数据</a></th>
+                <td>场景、周需求和初始排班历史，覆盖连续 4 周或 8 周。</td>
+                <td>按周分配班次和技能覆盖。接入时需保留跨周历史，并对齐竞赛评分。</td><td>备选</td></tr>
+              <tr><th scope="row">择期入院预约<a href="https://github.com/MRN36802/Patient-Admission-Scheduling-Problem">PASP_ATW · 作者仓库</a></th>
+                <td>在 PAS 床位算例上增加每位患者最早、最晚可入院日期。</td>
+                <td>在预约窗口内联选入院日与床位。需导入时间窗，定义延期代价。</td><td>备选</td></tr>
+            </tbody><tbody>
+              <tr class="problem-group"><th scope="rowgroup" colspan="4"><b>路径优化</b><span>决定服务人员的访问顺序和到达时间</span></th></tr>
+              <tr data-run="hhcrsp"><th scope="row">居家护理访视<a href="/?scenario=hhcrsp#scene-form">HHCRSP · 华西算例</a></th>
+                <td>患者访视频次、护理员技能、服务时间窗与旅行时间矩阵。</td><td>联合分配护理员、访视日期及每日路线，满足技能和时间窗约束。</td><td class="ok">可运行</td></tr>
+            </tbody><tbody>
+              <tr class="problem-group"><th scope="rowgroup" colspan="4"><b>资源指派</b><span>将个体需求匹配到具体资源</span></th></tr>
+              <tr><th scope="row">住院床位分配<a href="https://people.cs.kuleuven.be/~tony.wauters/wim.vancroonenburg/pas/">KU Leuven · PAS</a></th>
+                <td>患者住院期、床位、房间属性及科室专长。发布页附实例和解格式。</td>
+                <td>为每位患者逐日安排床位。需解析床位属性，复算转床及偏好罚分。</td><td>备选</td></tr>
+            </tbody><tbody>
+              <tr class="problem-group"><th scope="rowgroup" colspan="4"><b>设施布局与覆盖</b><span>决定服务资源部署在哪里、覆盖哪些需求点</span></th></tr>
+              <tr><th scope="row">院前急救车辆配置<a href="https://catalog.data.gov/dataset/ems-incident-dispatch-data">FDNY · EMS Incident Dispatch</a></th>
+                <td>纽约急救调度事件，含时间、行政区、调度区域与响应记录。</td>
+                <td>按区域和时段配置车辆。需补充站点、可用车数和行驶时间矩阵。</td><td>备选</td></tr>
+            </tbody><tbody>
+              <tr class="problem-group"><th scope="rowgroup" colspan="4"><b>容量规划</b><span>决定各时段配置或预留多少服务能力</span></th></tr>
+              <tr><th scope="row">急诊月度容量规划<a href="https://www.england.nhs.uk/statistics/statistical-work-areas/ae-waiting-times-and-activity/ae-attendances-and-emergency-admissions-2025-26/">NHS England · A&amp;E 2025–26</a></th>
+                <td>按月发布急诊就诊、急诊入院和四小时内完成处置等汇总指标。</td>
+                <td>比较机构间的月度容量分配。需补充服务能力、资源预算与容量成本。</td><td>备选</td></tr>
+              <tr><th scope="row">重症监护床位周转<a href="https://physionet.org/content/mimic-iv-demo/2.2/">PhysioNet · MIMIC-IV Demo 2.2</a></th>
+                <td>100 名患者的去标识化演示数据，含住院与 ICU 记录。ODbL 1.0。</td>
+                <td>提取停留时长，模拟床位预留策略。需另设到达过程及床位容量。</td><td>备选</td></tr>
+            </tbody><tbody>
+              <tr class="problem-group"><th scope="rowgroup" colspan="4"><b>预算约束下的选择</b><span>在给定预算内选择服务对象</span></th></tr>
+              <tr><th scope="row">献血者邀约分配<a href="https://archive.ics.uci.edu/dataset/176/blood+transfusion+service+center">UCI · Blood Transfusion Service Center</a></th>
+                <td>748 名献血者的捐献间隔、频次、累计量及再次捐献标签。CC BY 4.0。</td>
+                <td>在联系预算下分配邀约名额。需设定联系成本，并另行估计邀约效果。</td><td>备选</td></tr>
+            </tbody>
+          </table>
+        </section>
+      </div>
+
+      <section class="decision" id="decision" hidden>
+        <header class="decision-head" id="decision-head">
+          <span class="decision-title">模型决策</span>
+          <span class="chips" id="decision-meta"></span>
+          <button type="button" class="link" id="decision-toggle" hidden>展开</button>
+        </header>
+        <ol class="stream" id="decision-stream"></ol>
+        <div class="decision-foot" id="decision-foot"></div>
+      </section>
+
+      <section class="running" id="running" hidden>
+        <div class="run-line"><span class="dot"></span><span id="run-text">准备中</span></div>
+        <dl class="run-stats" id="run-stats"></dl>
+        <svg id="live-chart"></svg>
+      </section>
+
+      <section id="result" hidden></section>
+    </div>
+
+    <div id="view-trace" hidden>
+      <div id="audit-links" class="files"></div>
+      <div class="trace-bar">
+        <button type="button" class="trace-mode on" data-mode="time">时长</button>
+        <button type="button" class="trace-mode" data-mode="round">轮次</button>
+        <button type="button" class="trace-mode" data-mode="call">调用</button>
+        <input id="trace-search" type="search" placeholder="搜索轨迹" aria-label="搜索轨迹">
+      </div>
+      <div class="trace-wrap">
+        <div class="lanes" id="lanes"></div>
+        <div class="trace-body" id="trace-body"></div>
+      </div>
+    </div>
+
+    <div id="view-ptc" hidden>
+      <div class="audit-head"><h2>PTC 工具编排</h2><span id="ptc-state"></span></div>
+      <div id="ptc-body" aria-live="polite"></div>
+    </div>
+
+    <div id="view-code" hidden>
+      <header class="audit-head"><h2>代码与产物</h2><span id="code-state"></span></header>
+      <nav id="code-files" aria-label="产物文件"></nav>
+      <div id="code-body" aria-live="polite"></div>
+    </div>
+
+    <div id="view-build" hidden>
+      <div class="build-head">
+        <span class="build-title">建模流水线</span>
+        <span class="chips" id="build-meta"></span>
+        <button type="button" class="ghost" id="build-run" hidden>生成</button>
+      </div>
+      <div class="build-strip" id="build-strip"></div>
+      <div class="build-body" id="build-body"></div>
+    </div>
+
+    <div id="view-model" hidden>
+      <div class="pipeline" id="pipeline"></div>
+      <div class="model-body" id="model-body"></div>
+    </div>
+  </section>
+</main>
+
+<script src="/static/app.js?v=iteration-axes-9"></script>
+</body>
+</html>
